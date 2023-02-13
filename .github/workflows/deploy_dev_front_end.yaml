@@ -1,0 +1,46 @@
+name: FRONT-END - Deploy to Dev
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy_dev_front_end.yaml
+      - app/**
+    
+jobs:
+  deploy-to-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Node 14
+        timeout-minutes: 1
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16     
+
+      - name: Install modules
+        run: yarn install --prefer-offline --non-interactive
+        working-directory: app/
+
+      - name: Configuring AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::668231066703:role/github_workflow_platform_role 
+          role-skip-session-tagging: true
+          role-duration-seconds: 900        
+
+      - name: Build
+        run: scripts/cicd/build.sh
+        env:
+          CLOUDFRONT_S3: "s3://atc-stitcher-frontend-dev/"
+          CLOUDFRONT_ID: "E3VW6KMCVAPCGB"
+          REACT_APP_API_ENDPOINT: "/api/v1/"
+          CI: false
+        working-directory: app/
